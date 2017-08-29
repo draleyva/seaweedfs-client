@@ -22,6 +22,7 @@
 
 package org.lokra.seaweedfs.core;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.entity.ContentType;
@@ -42,7 +43,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
+import org.lokra.seaweedfs.core.http.JsonResponse;
 
 /**
  * Seaweed file system operation template.
@@ -58,7 +61,8 @@ public class FileTemplate implements InitializingBean, DisposableBean {
 
     private MasterWrapper masterWrapper;
     private VolumeWrapper volumeWrapper;
-
+    private FilerWrapper filerWrapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
     private int sameRackCount = 0;
     private int diffRackCount = 0;
     private int diffDataCenterCount = 0;
@@ -78,9 +82,24 @@ public class FileTemplate implements InitializingBean, DisposableBean {
     public FileTemplate(Connection connection) {
         this.masterWrapper = new MasterWrapper(connection);
         this.volumeWrapper = new VolumeWrapper(connection);
+        this.filerWrapper = new FilerWrapper(connection);
         headerDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
+    public FileHandleStatus saveFileByStream(String url, String fileName, InputStream stream) throws IOException
+    {
+      JsonResponse response;
+      
+      // Upload file
+      response = filerWrapper.uploadFile(url, fileName, stream, ContentType.DEFAULT_BINARY);
+      
+      Map map = objectMapper.readValue(response.json, Map.class);
+        
+      FileHandleStatus fhs = getFileStatus((String)map.get("fid"));
+      
+      return new FileHandleStatus(fileName, 0, fileName, fhs.getContentType(), (Integer)map.get("size"));
+    }
+    
     /**
      * Save a file.
      *
