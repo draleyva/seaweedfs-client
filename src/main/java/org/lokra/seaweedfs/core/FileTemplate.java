@@ -97,7 +97,7 @@ public class FileTemplate implements InitializingBean, DisposableBean {
         
       FileHandleStatus fhs = getFileStatus((String)map.get("fid"));
       
-      return new FileHandleStatus(fileName, 0, fileName, fhs.getContentType(), (Integer)map.get("size"));
+      return new FileHandleStatus(fhs.getFileId(), fhs.getLastModified(), fhs.getFileName(), fhs.getContentType(), (Integer)map.get("size"));
     }
     
     /**
