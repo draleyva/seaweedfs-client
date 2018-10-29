@@ -100,6 +100,20 @@ public class FileTemplate implements InitializingBean, DisposableBean {
       return new FileHandleStatus(fhs.getFileId(), fhs.getLastModified(), fhs.getFileName(), fhs.getContentType(), (Integer)map.get("size"));
     }
     
+    public FileHandleStatus saveFileByStream(String url, String fileName, InputStream stream, ContentType contentType) throws IOException
+    {
+      JsonResponse response;
+      
+      // Upload file
+      response = filerWrapper.uploadFile(url, fileName, stream, contentType);
+      
+      Map map = objectMapper.readValue(response.json, Map.class);
+        
+      FileHandleStatus fhs = getFileStatus((String)map.get("fid"), contentType);
+      
+      return new FileHandleStatus(fhs.getFileId(), fhs.getLastModified(), fhs.getFileName(), fhs.getContentType(), (Integer)map.get("size"));
+    }
+    
     /**
      * Save a file.
      *
@@ -307,6 +321,22 @@ public class FileTemplate implements InitializingBean, DisposableBean {
         }
     }
 
+    public FileHandleStatus getFileStatus(String fileId, ContentType contentType) throws IOException {
+        final String targetUrl = getTargetUrl(fileId);
+        HeaderResponse headerResponse = volumeWrapper.getFileStatusHeader(targetUrl, fileId);
+        try {
+            return new FileHandleStatus(fileId,
+                    headerDateFormat.parse(headerResponse.getLastHeader("Last-Modified").getValue()).getTime(),
+                    headerResponse.getLastHeader("Content-Disposition").getValue()
+                            .substring(10, headerResponse.getLastHeader("Content-Disposition").getValue().length() - 1),
+                    contentType.toString(),
+                    Long.parseLong(headerResponse.getLastHeader("Content-Length").getValue()));
+        } catch (ParseException e) {
+            throw new SeaweedfsException("Could not parse last modified time [" +
+                    headerResponse.getLastHeader("Last-Modified").getValue() + "] to long value");
+        }
+    }
+    
     /**
      * Get file url, could get file directly from seaweedfs volume server.
      *
